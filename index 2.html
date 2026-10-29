@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Moje noty – hudební studio</title>
+<style>
+:root{--ink:#20252b;--muted:#69727d;--line:#d9dee5;--paper:#fff;--bg:#f3f5f8;--accent:#4263eb;--soft:#e9edff;--green:#138a60}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{background:#172033;color:#fff;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{font-size:21px;font-weight:750;letter-spacing:-.4px}.brand span{color:#9fb2ff}header small{color:#c6cedd}
+button,input,select{font:inherit}button{border:0;border-radius:10px;padding:10px 13px;background:var(--accent);color:#fff;font-weight:650;cursor:pointer}button.secondary{background:#edf0f5;color:#303844}button.ghost{background:transparent;border:1px solid #667085;color:inherit}button:active{transform:translateY(1px)}
+main{max-width:1200px;margin:auto;padding:14px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:14px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 3px 12px #1d293910}.panelhead{padding:13px 15px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}.panelhead h2{font-size:16px;margin:0}.inside{padding:14px}
+input,select{border:1px solid var(--line);border-radius:9px;padding:10px;background:white;color:var(--ink);max-width:100%}
+.toolbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center}.toolbar button{padding:8px 10px;font-size:13px}.toolbar .active{background:#253b9c}
+.scorewrap{background:#fffdf7;border:1px solid #e6dfcf;border-radius:12px;padding:10px;overflow-x:auto}
+#staff{display:block;width:100%;min-width:340px;height:185px;touch-action:manipulation}.hint{font-size:12px;color:var(--muted);margin:7px 2px 0}
+.noteslist{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px;min-height:35px}.notechip{display:flex;gap:7px;align-items:center;border:1px solid #cdd5e0;background:#f8faff;border-radius:9px;padding:7px 9px;font-size:13px}.notechip.selected{border-color:var(--accent);background:var(--soft)}
+.notechip button{padding:3px 7px;font-size:12px;border-radius:6px}
+.keys{display:flex;position:fixed;left:0;right:0;bottom:0;width:100%;height:clamp(105px,19vh,155px);z-index:50;user-select:none;touch-action:manipulation;overflow:hidden;border:1px solid #8d96a5;border-radius:12px 12px 0 0;background:#e5e7eb;box-shadow:0 -4px 18px #17203324}
+body{padding-bottom:clamp(115px,20vh,165px)}
+.key{touch-action:none}
+.audio-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.audio-controls label{display:flex;gap:7px;align-items:center;font-size:13px;color:var(--muted)}
+.audio-controls input[type=range]{width:125px;padding:0;accent-color:var(--accent)}
+#ytPlayer{width:100%;aspect-ratio:16/9;background:#080b12}
+#ytPlayer iframe{width:100%;height:100%;border:0;display:block}
+.key{position:relative;flex:1;min-width:0;background:#fff;border-right:1px solid #aeb5c0;border-radius:0 0 5px 5px;color:#59616d;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font-size:11px;font-weight:650}
+.key:active,.key.pressed{background:#dce4ff}.key.black{position:absolute;top:0;height:88px;width:6.1%;z-index:2;background:#20242c;border:1px solid #111;color:#fff;border-radius:0 0 4px 4px;padding-bottom:7px;box-shadow:0 3px 4px #0004}
+.videoarea{background:#111827;color:white;border-radius:11px;overflow:hidden}.videoarea iframe{width:100%;aspect-ratio:16/9;border:0;display:block;background:#080b12}.videoempty{aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:#c7d0e0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row input{flex:1;min-width:100px}.status{font-size:12px;color:var(--muted);line-height:1.45}.badge{display:inline-block;background:#edf7f2;color:#14734f;border-radius:99px;padding:5px 9px;font-size:12px;font-weight:700}
+.savedlist{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.saveditem{background:#f4f6fa;border:1px solid var(--line);padding:8px 10px;border-radius:9px;display:flex;gap:8px;align-items:center}
+footer{max-width:1200px;margin:0 auto;padding:0 16px 18px;color:var(--muted);font-size:12px}
+@media(max-width:800px){main{grid-template-columns:1fr;padding:9px;gap:10px}header{padding:13px}.inside{padding:11px}.panelhead{padding:12px}#staff{height:170px}.keys{height:clamp(100px,17vh,135px)}body{padding-bottom:clamp(110px,18vh,145px)}.key.black{height:68%}}
+</style>
+</head>
+<body>
+<header><div><div class="brand">♫ Moje <span>noty</span></div><small>Hudební zápisník pro iPad</small></div><div class="row"><span id="savedStatus" class="badge">Lokální zápisník</span><button class="ghost" id="newBtn">＋ Nová skladba</button></div></header>
+<main>
+<section class="panel">
+ <div class="panelhead"><h2>🎼 Notový zápis</h2><div class="toolbar"><select id="clef" aria-label="Klíč"><option value="treble">Houslový klíč</option><option value="bass">Basový klíč</option></select><select id="duration" aria-label="Délka noty"><option value="quarter">♩ Čtvrťová</option><option value="half">𝅗𝅥 Půlová</option><option value="whole">𝅝 Celá</option><option value="eighth">♪ Osminová</option></select></div></div>
+ <div class="inside">
+  <div class="row" style="margin-bottom:10px"><input id="songTitle" value="Moje melodie" aria-label="Název skladby" style="flex:1"><select id="meter" aria-label="Takt"><option>4/4</option><option>3/4</option><option>2/4</option><option>6/8</option></select><button id="undoBtn" class="secondary">↶ Zpět</button><button id="clearBtn" class="secondary">Vymazat noty</button></div>
+  <div class="scorewrap"><svg id="staff" viewBox="0 0 760 185" role="img" aria-label="Notová osnova, klepnutím vložíš notu"></svg></div>
+  <div class="hint">Klepni na osnovu pro vložení noty. Klepni na notu pro výběr a úpravu. Hraní na klaviaturu přidá tóny automaticky.</div>
+  <div class="toolbar" style="margin-top:12px"><button id="sharpBtn" class="secondary">♯ Zvýšit</button><button id="flatBtn" class="secondary">♭ Snížit</button><button id="deleteBtn" class="secondary">Smazat vybranou</button><button id="upBtn" class="secondary">↑ O stupeň</button><button id="downBtn" class="secondary">↓ O stupeň</button><button id="pdfBtn">Tisk / PDF</button></div>
+  <div class="noteslist" id="notesList"></div>
+ </div>
+</section>
+<section style="display:flex;flex-direction:column;gap:14px">
+ <section class="panel">
+  <div class="panelhead"><h2>▶ YouTube</h2><span class="status">Přehrávání vedle not</span></div>
+  <div class="inside">
+   <div class="row"><input id="youtubeUrl" placeholder="Vlož odkaz na YouTube" aria-label="Odkaz na YouTube"><button id="loadYoutube">Načíst</button></div><div class="audio-controls"><label>Hlasitost videa <input id="videoVolume" type="range" min="0" max="100" value="80"><span id="videoVolumeLabel">80%</span></label></div>
+   <div class="videoarea" style="margin-top:10px" id="videoarea"><div class="videoempty">Vlož odkaz na YouTube a klepni na „Načíst“.<br> Některá videa nemusí povolit vložené přehrávání.</div></div>
+   <p class="status">Tip: můžeš vložit běžný odkaz na video nebo jeho krátký odkaz youtu.be.</p>
+  </div>
+ </section>
+ <section class="panel">
+  <div class="panelhead"><h2>🎹 Klaviatura</h2><div class="toolbar"><button id="midiBtn" class="secondary">Připojit MIDI</button></div></div>
+  <div class="inside">
+   <div class="row" style="margin-bottom:9px"><label class="status">Oktáva</label><select id="octave"><option value="3">3</option><option value="4" selected>4</option><option value="5">5</option></select><label class="status"><input id="autoRecord" type="checkbox" checked style="vertical-align:middle"> Automaticky zapisovat</label></div><div class="row"><label class="status">Zvuk nástroje</label><select id="instrument"><option value="piano">Klavír</option><option value="organ">Hammond</option><option value="sax">Saxofon</option></select></div><div class="audio-controls"><label>Hlasitost klaviatury <input id="keyboardVolume" type="range" min="0" max="100" value="65"><span id="keyboardVolumeLabel">65%</span></label></div>
+   <div class="keys" id="keys" aria-label="Virtuální klaviatura"></div>
+   <p id="midiStatus" class="status" style="margin:9px 0 0">Virtuální klaviatura je připravena. MIDI připojení závisí na prohlížeči a zařízení.</p>
+  </div>
+ </section>
+ <section class="panel">
+  <div class="panelhead"><h2>💾 Moje skladby</h2><button id="saveBtn">Uložit</button></div>
+  <div class="inside"><div class="row"><input id="saveName" placeholder="Název skladby" value="Moje melodie"><button id="saveAsBtn" class="secondary">Uložit jako</button></div><div id="savedList" class="savedlist"></div><p class="status">Skladby se ukládají do úložiště tohoto prohlížeče na tomto zařízení. Pro jistotu si můžeš vytisknout nebo uložit PDF.</p></div>
+ </section>
+</section>
+</main>
+<footer>Prototyp: virtuální klaviatura a editace not fungují přímo v prohlížeči. MIDI vstup vyžaduje podporu Web MIDI (často není dostupná v Safari na iPadu). YouTube může mít omezení vkládání a přehrávání na pozadí.</footer>
+<script>
+const $=id=>document.getElementById(id);
+let notes=[],selected=-1,seq=0,midiAccess=null;
+const pitches=['C','D','E','F','G','A','H'];
+const pitchNames={C:'C',D:'D',E:'E',F:'F',G:'G',A:'A',H:'B'};
+function noteName(n){return (n.acc==='sharp'?'♯':n.acc==='flat'?'♭':'')+n.pitch+n.oct}
+function midiTo(n){const names=['C','C','D','D','E','F','F','G','G','A','A','H'];const accs=['','♯','','♯','','','♯','','♯','','♯',''];const k=n%12;return {pitch:names[k],acc:accs[k]==='♯'?'sharp':'',oct:Math.floor(n/12)-1,midi:n}}
+function drawStaff(){
+ const svg=$('staff'),W=760;svg.innerHTML='';
+ const NS='http://www.w3.org/2000/svg';
+ const add=(tag,attrs={},txt='')=>{const e=document.createElementNS(NS,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(txt)e.textContent=txt;svg.appendChild(e);return e};
+ add('rect',{x:0,y:0,width:W,height:185,fill:'#fffdf7'});
+ for(let i=0;i<5;i++)add('line',{x1:22,y1:49+i*15,x2:738,y2:49+i*15,stroke:'#343a40','stroke-width':1.4});
+ add('text',{x:28,y:105,'font-size':62,fill:'#222','font-family':'serif'},$('clef').value==='treble'?'𝄞':'𝄢');
+ add('text',{x:94,y:30,'font-size':13,fill:'#777'},$('meter').value);
+ notes.forEach((n,i)=>{
+  let x=145+i*43;if(x>710)x=710;
+  const y=109-(n.step*7.5);
+  if(y<49||y>109){const ly=y<49?49:y>109?109:y;add('line',{x1:x-12,y1:ly,x2:x+12,y2:ly,stroke:'#222','stroke-width':1.3})}
+  if(n.acc==='sharp')add('text',{x:x-17,y:y+4,'font-size':18,fill:'#222'},'♯');
+  if(n.acc==='flat')add('text',{x:x-17,y:y+4,'font-size':18,fill:'#222'},'♭');
+  const fill=i===selected?'#4263eb':'#15191f';
+  if(n.dur==='whole'||n.dur==='half')add('ellipse',{cx:x,cy:y,rx:8,ry:5,transform:`rotate(-22 ${x} ${y})`,fill:n.dur==='whole'?'#fffdf7':fill,stroke:fill,'stroke-width':2});
+  else add('ellipse',{cx:x,cy:y,rx:7.5,ry:5.1,transform:`rotate(-22 ${x} ${y})`,fill,stroke:fill,'stroke-width':1});
+  if(!['whole','half'].includes(n.dur)){add('line',{x1:x+6,y1:y-1,x2:x+6,y2:y-31,stroke:fill,'stroke-width':2});if(n.dur==='eighth')add('path',{d:`M ${x+6} ${y-31} q 15 5 8 17`,fill:'none',stroke:fill,'stroke-width':2})}
+  if(i===selected)add('circle',{cx:x,cy:y,r:13,fill:'none',stroke:'#4263eb','stroke-width':1.5,'stroke-dasharray':'3 3'});
+  const g=svg.lastChild; // selection target set on notehead itself below
+  const hit=add('circle',{cx:x,cy:y,r:13,fill:'transparent',stroke:'none'});hit.style.cursor='pointer';hit.addEventListener('click',e=>{e.stopPropagation();selected=i;render()});
+  add('text',{x:x-10,y:155,'font-size':10,fill:'#777'},n.pitch+n.oct);
+ });
+ // clickable empty staff area maps vertical location to a diatonic step
+ svg.onclick=e=>{const r=svg.getBoundingClientRect();const y=(e.clientY-r.top)*185/r.height;const step=Math.max(-5,Math.min(10,Math.round((109-y)/7.5)));addNote({pitch:stepToPitch(step),oct:stepToOct(step),step,dur:$('duration').value,acc:''})};
+}
+function stepToPitch(step){return pitches[((step%7)+7)%7]}
+function stepToOct(step){return 4+Math.floor((step+2)/7)}
+function addNote(n){notes.push({...n,id:++seq});selected=notes.length-1;render()}
+function render(){
+ drawStaff();const list=$('notesList');list.innerHTML='';
+ notes.forEach((n,i)=>{const chip=document.createElement('div');chip.className='notechip'+(i===selected?' selected':'');const label=document.createElement('span');label.textContent=`${i+1}. ${noteName(n)} · ${{quarter:'čtvrťová',half:'půlová',whole:'celá',eighth:'osminová'}[n.dur]}`;chip.append(label);const b=document.createElement('button');b.textContent='Vybrat';b.onclick=()=>{selected=i;render()};chip.append(b);list.append(chip)});
+ $('saveName').value=$('songTitle').value; 
+}
+function makeKeys(){const box=$('keys');box.innerHTML='';const oct=Number($('octave').value);const white=['C','D','E','F','G','A','H','C'];white.forEach((p,i)=>{const k=document.createElement('div');k.className='key';k.innerHTML=`<span>${p}${i===7?oct+1:oct}</span>`;k.onclick=()=>playKey(p,oct+(i===7?1:0),k);box.append(k)});
+ const blacks=[['C♯',0],['D♯',1],['F♯',3],['G♯',4],['A♯',5]];blacks.forEach(([p,i])=>{const k=document.createElement('div');k.className='key black';k.style.left=`${(i+1)*12.5-3.05}%`;k.textContent=p;k.onclick=()=>playKey(p.replace('♯',''),oct,k,'sharp');box.append(k)})}
+function playKey(p,oct,el,acc=''){el.classList.add('pressed');setTimeout(()=>el.classList.remove('pressed'),160);const midi=(oct+1)*12+({C:0,D:2,E:4,F:5,G:7,A:9,H:11}[p])+(acc==='sharp'?1:0);tone(midi);if($('autoRecord').checked){const idx=pitches.indexOf(p);addNote({pitch:p,oct,step:(oct-4)*7+idx,dur:$('duration').value,acc})}}
+let audioCtx,masterGain;
+function tone(midi){try{audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume();masterGain=masterGain||audioCtx.createGain();masterGain.gain.value=Number($('keyboardVolume').value)/100;masterGain.connect(audioCtx.destination);const inst=$('instrument').value,osc=audioCtx.createOscillator(),gain=audioCtx.createGain(),filter=audioCtx.createBiquadFilter();osc.frequency.value=440*Math.pow(2,(midi-69)/12);if(inst==='organ'){osc.type='sine';gain.gain.setValueAtTime(.15,audioCtx.currentTime);gain.gain.setTargetAtTime(.001,audioCtx.currentTime+.65,.12)}else if(inst==='sax'){osc.type='sawtooth';filter.type='lowpass';filter.frequency.value=1700;filter.Q.value=1.2;gain.gain.setValueAtTime(.001,audioCtx.currentTime);gain.gain.linearRampToValueAtTime(.14,audioCtx.currentTime+.07);gain.gain.setTargetAtTime(.001,audioCtx.currentTime+.55,.1);osc.connect(filter);filter.connect(gain)}else{osc.type='triangle';gain.gain.setValueAtTime(.001,audioCtx.currentTime);gain.gain.linearRampToValueAtTime(.18,audioCtx.currentTime+.008);gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.65)}if(inst!=='sax')osc.connect(gain);gain.connect(masterGain);osc.start();osc.stop(audioCtx.currentTime+.7)}catch(e){$('midiStatus').textContent='Zvuk není dostupný: '+e.message}}
+$('keyboardVolume').oninput=()=>{$('keyboardVolumeLabel').textContent=$('keyboardVolume').value+'%';if(masterGain)masterGain.gain.value=Number($('keyboardVolume').value)/100};
+$('clef').onchange=render;$('meter').onchange=render;$('duration').onchange=()=>{};
+$('octave').onchange=makeKeys;
+$('undoBtn').onclick=()=>{if(notes.length){notes.pop();selected=Math.min(selected,notes.length-1);render()}};
+$('clearBtn').onclick=()=>{if(confirm('Vymazat všechny noty této skladby?')){notes=[];selected=-1;render()}};
+$('deleteBtn').onclick=()=>{if(selected>=0){notes.splice(selected,1);selected=Math.min(selected,notes.length-1);render()}};
+$('upBtn').onclick=()=>move(1);$('downBtn').onclick=()=>move(-1);
+function move(d){if(selected<0)return;notes[selected].step+=d;notes[selected].pitch=stepToPitch(notes[selected].step);notes[selected].oct=stepToOct(notes[selected].step);render()}
+$('sharpBtn').onclick=()=>{if(selected>=0){notes[selected].acc=notes[selected].acc==='sharp'?'':'sharp';render()}};
+$('flatBtn').onclick=()=>{if(selected>=0){notes[selected].acc=notes[selected].acc==='flat'?'':'flat';render()}};
+$('newBtn').onclick=()=>{if(notes.length&&!confirm('Začít novou skladbu? Předchozí si nejprve ulož.'))return;notes=[];selected=-1;$('songTitle').value='Nová melodie';render()};
+function ytId(url){try{const u=new URL(url);if(u.hostname.includes('youtu.be'))return u.pathname.slice(1).split('/')[0];if(u.hostname.includes('youtube.com'))return u.searchParams.get('v')||u.pathname.split('/').filter(Boolean).pop()}catch(e){}return ''}
+let ytPlayer=null,ytReady=false,pendingVideoId='';
+window.onYouTubeIframeAPIReady=()=>{ytReady=true;if(pendingVideoId)createYTPlayer(pendingVideoId)};
+function createYTPlayer(id){pendingVideoId=id;$('videoarea').innerHTML='<div id="ytPlayer"></div>';if(!window.YT||!YT.Player)return;ytPlayer=new YT.Player('ytPlayer',{videoId:id,playerVars:{playsinline:1,enablejsapi:1,origin:location.origin},events:{onReady:()=>ytPlayer.setVolume(Number($('videoVolume').value))}})}
+$('loadYoutube').onclick=()=>{const id=ytId($('youtubeUrl').value.trim());if(!id){alert('Vlož platný odkaz na video YouTube.');return}pendingVideoId=id;createYTPlayer(id)};
+$('videoVolume').oninput=()=>{$('videoVolumeLabel').textContent=$('videoVolume').value+'%';if(ytPlayer&&ytPlayer.setVolume)ytPlayer.setVolume(Number($('videoVolume').value))};
+const ytApi=document.createElement('script');ytApi.src='https://www.youtube.com/iframe_api';document.head.appendChild(ytApi);
+function current(){return {title:$('songTitle').value||'Moje melodie',clef:$('clef').value,meter:$('meter').value,notes:notes.map(n=>({...n})),updated:new Date().toISOString()}}
+function saved(){try{return JSON.parse(localStorage.getItem('mojeNoty')||'[]')}catch(e){return []}}
+function save(asNew=false){const data=current(),arr=saved();const idx=asNew?-1:arr.findIndex(x=>x.title===data.title);if(idx>=0)arr[idx]=data;else arr.unshift(data);localStorage.setItem('mojeNoty',JSON.stringify(arr));$('savedStatus').textContent='Uloženo ✓';showSaved()}
+$('saveBtn').onclick=()=>save(false);$('saveAsBtn').onclick=()=>{const name=prompt('Název skladby:',$('saveName').value||$('songTitle').value);if(name){$('songTitle').value=name;save(true)}};
+function showSaved(){const el=$('savedList');el.innerHTML='';saved().forEach((s,i)=>{const d=document.createElement('div');d.className='saveditem';const b=document.createElement('button');b.className='secondary';b.textContent=s.title;b.onclick=()=>{notes=s.notes||[];selected=-1;$('songTitle').value=s.title;$('clef').value=s.clef||'treble';$('meter').value=s.meter||'4/4';render()};const del=document.createElement('button');del.className='secondary';del.textContent='×';del.title='Smazat uloženou skladbu';del.onclick=()=>{if(confirm('Smazat skladbu '+s.title+'?')){const a=saved();a.splice(i,1);localStorage.setItem('mojeNoty',JSON.stringify(a));showSaved()}};d.append(b,del);el.append(d)})}
+$('pdfBtn').onclick=()=>window.print();
+$('midiBtn').onclick=async()=>{if(!navigator.requestMIDIAccess){$('midiStatus').textContent='Tento prohlížeč nepodporuje Web MIDI. Na iPadu můžeš zkusit externí MIDI přes kompatibilní hudební aplikaci nebo použít virtuální klaviaturu.';return}try{midiAccess=await navigator.requestMIDIAccess();midiAccess.inputs.forEach(input=>input.onmidimessage=ev=>{const [cmd,note,vel]=ev.data;if((cmd&0xf0)===0x90&&vel>0){const n=midiTo(note);addNote({pitch:n.pitch,oct:n.oct,step:(n.oct-4)*7+pitches.indexOf(n.pitch),dur:$('duration').value,acc:n.acc});tone(note)}});$('midiStatus').textContent=`MIDI připraveno. Vstupy: ${midiAccess.inputs.size}. Pokud není vidět zařízení, zkontroluj připojení.`}catch(e){$('midiStatus').textContent='Přístup k MIDI nebyl povolen nebo není dostupný: '+e.message}}
+window.addEventListener('beforeprint',()=>{});
+makeKeys();render();showSaved();
+</script>
+</body>
+</html>
