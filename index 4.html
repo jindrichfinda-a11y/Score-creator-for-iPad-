@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Moje noty – opravený editor</title>
+<style>
+:root{--ink:#202633;--muted:#687386;--line:#d9dfeb;--paper:#fff;--bg:#f2f5fa;--blue:#3d5afe}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding-bottom:125px}
+header{padding:12px 15px;background:#172033;color:white;font-size:21px;font-weight:800}
+main{max-width:1200px;margin:auto;padding:10px;display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:10px}
+.panel{background:white;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:10px}.head{padding:10px 12px;border-bottom:1px solid var(--line);font-weight:750}.inside{padding:10px}
+button,select,input{font:inherit}button{border:0;border-radius:8px;padding:8px 10px;background:var(--blue);color:white;font-weight:650;margin:2px}button.secondary{background:#e9edf5;color:#273142}button.active{background:#243ca6;color:white}select,input[type=text],input[type=number]{border:1px solid var(--line);border-radius:8px;padding:8px;background:white;max-width:100%}
+.toolbar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin-bottom:8px}.toolbar label{font-size:12px;color:var(--muted)}.staffwrap{overflow:auto;background:#fffdf7;border:1px solid #e5dfd0;border-radius:8px}svg{display:block;width:100%;min-width:620px;touch-action:manipulation}.note-list{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}.chip{background:#eef2ff;color:#26346b;border:1px solid #ccd5ff;font-size:12px}.help{font-size:12px;color:var(--muted);line-height:1.45}
+.keys{position:fixed;left:0;right:0;bottom:0;height:112px;z-index:10;display:flex;background:#dce1e9;border:1px solid #8993a3;touch-action:none;user-select:none}.key{flex:1;min-width:0;background:white;border-right:1px solid #aeb6c3;display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px;font-size:11px;color:#303746;touch-action:none}.key.black{background:#20242d;color:white;position:absolute;top:0;height:63%;width:4%;z-index:2;border-radius:0 0 4px 4px;align-items:flex-end;padding-bottom:4px;font-size:9px}.key.pressed{background:#c9d5ff}
+@media(max-width:800px){main{grid-template-columns:1fr;padding:6px}.side{display:block}.staffwrap{max-height:52vh}.keys{height:100px}body{padding-bottom:108px}}
+@media print{body{padding:0;background:white}header,.side,.toolbar,.keys,.no-print{display:none!important}main{display:block;padding:0}.panel{border:0}.staffwrap{overflow:visible}.staffwrap svg{min-width:0;width:100%}}
+</style>
+</head>
+<body>
+<header>♫ Moje noty — opravený editor</header>
+<main>
+<section class="panel">
+<div class="head">🎼 Partitura</div><div class="inside">
+<div class="toolbar">
+<label>Nástroj</label><select id="instrument"><option value="alto">Altový saxofon (Es)</option><option value="tenor">Tenorový saxofon (B)</option><option value="trumpet">Trubka (B)</option><option value="concert">Nástroj v C</option></select>
+<label>Délka</label><select id="duration"><option value="1">Celá</option><option value="2">Půlová</option><option value="4" selected>Čtvrťová</option><option value="8">Osminová</option><option value="16">Šestnáctinová</option><option value="32">Dvaatřicetinová</option><option value="64">Šedesátčtvrtinová</option></select>
+<button class="secondary" id="dot">Tečka: ne</button><button class="secondary" id="rest">Pomlka: ne</button>
+<button class="secondary" id="sharp">♯ předvolit</button><button class="secondary" id="flat">♭ předvolit</button>
+<label>Takt</label><select id="meter"><option>4/4</option><option>3/4</option><option>2/4</option><option>6/8</option><option>5/4</option><option>7/8</option></select>
+</div>
+<div class="toolbar">
+<button class="secondary" id="stacc">Staccato: ne</button><button class="secondary" id="accent">Akcent: ne</button>
+<label>Dynamika</label><select id="dynamic"><option value="">—</option><option>pp</option><option>p</option><option>mp</option><option>mf</option><option>f</option><option>ff</option></select>
+<label>Tempo</label><input id="tempo" type="number" min="30" max="240" value="110" style="width:75px">
+<button class="secondary" id="undo">Zpět</button><button class="secondary" id="delete">Smazat vybranou</button><button class="secondary" id="clear">Vymazat part</button>
+</div>
+<div class="toolbar">
+<label>Vybraná nota</label><select id="editPitch"></select>
+<label>Oktáva</label><select id="editOct"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
+<label>Délka</label><select id="editDuration"><option value="1">Celá</option><option value="2">Půlová</option><option value="4">Čtvrťová</option><option value="8">Osminová</option><option value="16">Šestnáctinová</option><option value="32">Dvaatřicetinová</option><option value="64">Šedesátčtvrtinová</option></select>
+<button id="applyEdit">Použít úpravu</button>
+</div>
+<div class="staffwrap"><svg id="score" viewBox="0 0 1000 220" aria-label="Notová osnova"></svg></div>
+<div id="noteList" class="note-list"></div>
+<p class="help">Vkládání: klepni na správnou výšku v osnově. Klikni na notu pro výběr a uprav ji v polích nad osnovou. Pomlka se vkládá tlačítkem „Pomlka“. ♯ a ♭ se použijí na další vloženou notu; lze je také upravit přes vybranou notu.</p>
+</div></section>
+<aside class="side">
+<section class="panel"><div class="head">🎹 Klaviatura</div><div class="inside">
+<div class="toolbar"><label>Oktáva</label><select id="octave"><option>2</option><option>3</option><option selected>4</option><option>5</option></select></div>
+<div class="toolbar"><label>Zvuk</label><select id="sound"><option value="piano">Klavír</option><option value="organ">Hammond</option><option value="sax">Saxofon</option><option value="trumpet">Trubka</option></select></div>
+<div class="toolbar"><label>Hlasitost</label><input id="volume" type="range" min="0" max="100" value="60"></div>
+<p class="help">Podrž klávesy pro vícehlasý zvuk. Zvuky jsou syntetické.</p>
+</div></section>
+<section class="panel"><div class="head">▶ Přehrávání</div><div class="inside">
+<button id="play">Přehrát part</button><button class="secondary" id="stop">Zastavit</button><button class="secondary" id="print">Tisk / PDF</button><p id="status" class="help">Připraveno.</p>
+</div></section>
+<section class="panel"><div class="head">💾 Skladba</div><div class="inside">
+<input id="title" type="text" value="Moje skladba" aria-label="Název skladby">
+<div class="toolbar"><button id="save">Uložit</button><button class="secondary" id="load">Načíst</button><button class="secondary" id="export">Export JSON</button><button class="secondary" id="import">Import JSON</button><input id="file" type="file" accept=".json,application/json" hidden></div>
+<p class="help">Uložení zůstává v Safari na tomto zařízení. Export JSON vytvoří záložní soubor.</p>
+</div></section>
+</aside>
+</main><div class="keys" id="keys"></div>
+<script>
+const $=id=>document.getElementById(id);
+const letters=['C','D','E','F','G','A','H'];
+const chrom=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','B♭','H'];
+const semi={C:0,'C♯':1,D:2,'D♯':3,E:4,F:5,'F♯':6,G:7,'G♯':8,A:9,'B♭':10,H:11};
+let notes=[],selected=-1,dotted=false,restMode=false,acc='',stacc=false,accent=false,ctx=null,master=null,voices=new Map(),playTimers=[];
+const midiOf=n=>(n.oct+1)*12+(semi[n.pitch]??0)+(n.acc==='sharp'?1:n.acc==='flat'?-1:0);
+function say(s){$('status').textContent=s}
+function btnState(id,on,text){$(id).classList.toggle('active',on);$(id).textContent=text}
+function durationGlyph(n){if(n.rest)return ({1:'𝄻',2:'𝄼',4:'𝄽',8:'𝄾',16:'𝄿',32:'𝅀',64:'𝅁'})[n.dur];return ({1:'𝅝',2:'𝅗𝅥',4:'♩',8:'♪',16:'𝅘𝅥𝅯',32:'𝅘𝅥𝅰',64:'𝅘𝅥𝅱'})[n.dur]}
+function noteLabel(n){return n.rest?'Pomlka ('+n.dur+')':(n.acc==='sharp'?'♯':n.acc==='flat'?'♭':'')+n.pitch+n.oct+(n.dotted?' ·':'')}
+function svgEl(tag,a={},txt){let e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(a).forEach(([k,v])=>e.setAttribute(k,v));if(txt!==undefined)e.textContent=txt;return e}
+function stepInfo(step){let ix=((step%7)+7)%7;let octave=4+Math.floor((step+2)/7);return {pitch:letters[ix],oct:octave}}
+function yFor(n){let di=letters.indexOf(n.pitch);let step=(n.oct-4)*7+(di-2);return 170-step*5}
+function draw(){
+ const s=$('score');s.innerHTML='';
+ // Four staff lines plus top/bottom positions; bottom line is E4.
+ for(let i=0;i<5;i++)s.append(svgEl('line',{x1:25,y1:150-i*10,x2:975,y2:150-i*10,stroke:'#343b47','stroke-width':1.4}));
+ s.append(svgEl('text',{x:28,y:157,'font-size':43,'font-family':'serif',fill:'#202633'},'𝄞'));
+ s.append(svgEl('text',{x:86,y:125,'font-size':17,fill:'#596273'},$('meter').value));
+ const shown=notes.slice(-20),offset=notes.length-shown.length;
+ shown.forEach((n,j)=>{
+  const i=offset+j,x=130+j*41,y=yFor(n),active=i===selected,ink=active?'#3d5afe':'#171b22';
+  if(n.rest){
+   const ry=({1:105,2:115,4:130,8:125,16:125,32:125,64:125})[n.dur]||130;
+   s.append(svgEl('text',{x:x-8,y:ry+5,'font-size':24,fill:ink},durationGlyph(n)));
+  }else{
+   if(y<110||y>150){let ly=y<110?Math.floor((150-y)/10)*10+150:150;for(let yy=ly;Math.abs(yy-y)<9;yy+=y<110?-10:10)s.append(svgEl('line',{x1:x-11,y1:yy,x2:x+11,y2:yy,stroke:ink,'stroke-width':1.2}));}
+   if(n.acc)s.append(svgEl('text',{x:x-18,y:y+5,'font-size':17,fill:ink},n.acc==='sharp'?'♯':'♭'));
+   s.append(svgEl('ellipse',{cx:x,cy:y,rx:7,ry:4.5,transform:`rotate(-20 ${x} ${y})`,fill:[1,2].includes(n.dur)?'#fffdf7':ink,stroke:ink,'stroke-width':1.5}));
+   if(![1,2].includes(n.dur))s.append(svgEl('line',{x1:x+6,y1:y,x2:x+6,y2:y-27,stroke:ink,'stroke-width':1.5}));
+   if(n.dur<=8)s.append(svgEl('path',{d:`M ${x+6} ${y-27} q 13 4 6 14`,fill:'none',stroke:ink,'stroke-width':1.8}));
+   if(n.dur<=4&&n.dur>1){} 
+   if(n.dotted)s.append(svgEl('circle',{cx:x+12,cy:y-1,r:2.2,fill:ink}));
+   if(n.stacc)s.append(svgEl('circle',{cx:x,cy:y-12,r:2,fill:ink}));
+   if(n.accent)s.append(svgEl('text',{x:x-5,y:y-15,'font-size':15,fill:ink},'>'));
+   if(n.dynamic)s.append(svgEl('text',{x:x-6,y:198,'font-size':12,'font-style':'italic',fill:ink},n.dynamic));
+  }
+  s.append(svgEl('text',{x:x-12,y:215,'font-size':10,fill:'#697386'},noteLabel(n)));
+  const hit=svgEl('rect',{x:x-17,y:85,width:34,height:135,fill:'transparent',cursor:'pointer'});
+  hit.addEventListener('click',e=>{e.stopPropagation();selected=i;syncEdit();draw()});s.append(hit);
+ });
+ s.addEventListener('click',function handler(e){
+  if(e.target!==s)return;
+  const r=s.getBoundingClientRect(),yy=(e.clientY-r.top)*220/r.height;
+  // Bottom staff line is E4 at y=150. One diatonic step = 5 SVG units.
+  const step=Math.round((150-yy)/5);let oct=4,ix=2+step;
+  while(ix<0){ix+=7;oct--}while(ix>6){ix-=7;oct++}
+  if(restMode){notes.push({rest:true,dur:+$('duration').value,dotted,acc:'',stacc:false,accent:false,dynamic:$('dynamic').value})}
+  else notes.push({rest:false,pitch:letters[ix],oct,dur:+$('duration').value,dotted,acc,stacc,accent,dynamic:$('dynamic').value});
+  selected=notes.length-1;acc='';btnState('sharp',false,'♯ předvolit');btnState('flat',false,'♭ předvolit');draw();syncEdit();
+ },{once:true});
+ const list=$('noteList');list.innerHTML='';notes.forEach((n,i)=>{const b=document.createElement('button');b.className='chip';b.textContent=(i+1)+'. '+noteLabel(n)+' '+durationGlyph(n);if(i===selected)b.classList.add('active');b.onclick=()=>{selected=i;syncEdit();draw()};list.append(b)});
+}
+function syncEdit(){const n=notes[selected];if(!n)return;$('editPitch').value=n.pitch||'C';$('editOct').value=String(n.oct||4);$('editDuration').value=String(n.dur||4)}
+function updateEdit(){const n=notes[selected];if(!n){say('Nejdřív vyber notu v osnově nebo v seznamu.');return}n.pitch=$('editPitch').value;n.oct=+$('editOct').value;n.dur=+$('editDuration').value;n.rest=false;draw();say('Nota upravena.')}
+function audio(midi){ctx=ctx||new (window.AudioContext||window.webkitAudioContext)();if(ctx.state==='suspended')ctx.resume();master=master||ctx.createGain();master.gain.value=+$('volume').value/100;if(!master._ok){master.connect(ctx.destination);master._ok=true}let o=ctx.createOscillator(),g=ctx.createGain(),f=ctx.createBiquadFilter(),now=ctx.currentTime;const snd=$('sound').value;o.frequency.value=440*Math.pow(2,(midi-69)/12);o.type=snd==='organ'?'sine':snd==='piano'?'triangle':'sawtooth';f.type='lowpass';f.frequency.value=snd==='sax'?1400:snd==='trumpet'?2200:5000;o.connect(f);f.connect(g);g.connect(master);g.gain.setValueAtTime(.001,now);g.gain.linearRampToValueAtTime(.16,now+.025);o.start();return {o,g}}
+function stopAudio(v){if(!v)return;let now=ctx.currentTime;v.g.gain.setTargetAtTime(.0001,now,.04);try{v.o.stop(now+.2)}catch(e){}}
+function buildKeys(){const box=$('keys');box.innerHTML='';const base=+$('octave').value;let whites=[];for(let i=0;i<18;i++){let p=letters[i%7],oct=base+Math.floor(i/7),k=document.createElement('div');k.className='key';k.textContent=p;k.onpointerdown=e=>{e.preventDefault();k.classList.add('pressed');let v=audio((oct+1)*12+semi[p]);voices.set(e.pointerId,{v,k});k.setPointerCapture(e.pointerId)};const release=e=>{let q=voices.get(e.pointerId);if(q){stopAudio(q.v);voices.delete(e.pointerId)}k.classList.remove('pressed')};k.onpointerup=release;k.onpointercancel=release;box.append(k);whites.push({p,oct,k})}
+ for(let i=0;i<whites.length-1;i++){let a=whites[i],b=whites[i+1];if(['C','D','F','G','A'].includes(a.p)){let k=document.createElement('div');k.className='key black';k.style.left=`calc(${(i+1)*100/18}% - 2%)`;k.textContent=a.p+'♯';k.onpointerdown=e=>{e.preventDefault();let v=audio((a.oct+1)*12+semi[a.p]+1);voices.set(e.pointerId,{v,k});k.setPointerCapture(e.pointerId)};let rel=e=>{let q=voices.get(e.pointerId);if(q){stopAudio(q.v);voices.delete(e.pointerId)}};k.onpointerup=rel;k.onpointercancel=rel;box.append(k)}}
+}
+$('dot').onclick=()=>{dotted=!dotted;btnState('dot',dotted,'Tečka: '+(dotted?'ano':'ne'))};
+$('rest').onclick=()=>{restMode=!restMode;btnState('rest',restMode,'Pomlka: '+(restMode?'ano':'ne'))};
+$('sharp').onclick=()=>{acc=acc==='sharp'?'':'sharp';btnState('sharp',acc==='sharp','♯ předvolit');btnState('flat',false,'♭ předvolit')};
+$('flat').onclick=()=>{acc=acc==='flat'?'':'flat';btnState('flat',acc==='flat','♭ předvolit');btnState('sharp',false,'♯ předvolit')};
+$('stacc').onclick=()=>{stacc=!stacc;btnState('stacc',stacc,'Staccato: '+(stacc?'ano':'ne'))};
+$('accent').onclick=()=>{accent=!accent;btnState('accent',accent,'Akcent: '+(accent?'ano':'ne'))};
+$('undo').onclick=()=>{if(notes.length){notes.pop();selected=Math.min(selected,notes.length-1);draw();syncEdit()}};
+$('delete').onclick=()=>{if(selected>=0){notes.splice(selected,1);selected=Math.min(selected,notes.length-1);draw();syncEdit()}else say('Vyber notu, kterou chceš smazat.')};
+$('clear').onclick=()=>{if(confirm('Opravdu vymazat všechny noty?')){notes=[];selected=-1;draw()}};
+$('applyEdit').onclick=updateEdit;
+$('print').onclick=()=>window.print();
+$('save').onclick=()=>{localStorage.setItem('mojeNotyFixed',JSON.stringify({notes,title:$('title').value,meter:$('meter').value,tempo:$('tempo').value}));say('Skladba uložena v tomto Safari.')};
+$('load').onclick=()=>{try{let d=JSON.parse(localStorage.getItem('mojeNotyFixed'));if(!d)throw 0;notes=d.notes||[];$('title').value=d.title||'Moje skladba';$('meter').value=d.meter||'4/4';$('tempo').value=d.tempo||110;selected=-1;draw();say('Skladba načtena.')}catch(e){say('Zatím není uložená skladba.')}};
+$('export').onclick=()=>{let d={notes,title:$('title').value,meter:$('meter').value,tempo:$('tempo').value};let a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}));a.download=($('title').value||'skladba')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('import').onclick=()=>$('file').click();$('file').onchange=async e=>{try{let d=JSON.parse(await e.target.files[0].text());notes=d.notes||[];$('title').value=d.title||'Moje skladba';$('meter').value=d.meter||'4/4';$('tempo').value=d.tempo||110;selected=-1;draw();say('Soubor načten.')}catch(e){say('Soubor JSON se nepodařilo načíst.')}};
+let playIndex=0;
+$('stop').onclick=()=>{playTimers.forEach(clearTimeout);playTimers=[];say('Přehrávání zastaveno.')};
+$('play').onclick=()=>{playTimers.forEach(clearTimeout);playTimers=[];const arr=notes.slice(),bpm=Math.max(30,Math.min(240,+$('tempo').value||110));let t=0;arr.forEach(n=>{let ms=60000/bpm*4/n.dur*(n.dotted?1.5:1);if(!n.rest){playTimers.push(setTimeout(()=>{let v=audio(midiOf(n));playTimers.push(setTimeout(()=>stopAudio(v),Math.max(80,ms*.8)));say('Přehrávám '+noteLabel(n))},t))}t+=ms});playTimers.push(setTimeout(()=>say('Přehrávání dokončeno.'),t+50))};
+$('meter').onchange=draw;$('octave').onchange=buildKeys;
+$('editPitch').innerHTML=chrom.map(p=>`<option value="${p}">${p}</option>`).join('');
+// initialize
+draw();buildKeys();
+</script></body></html>
